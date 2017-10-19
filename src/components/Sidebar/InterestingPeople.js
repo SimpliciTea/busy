@@ -13,12 +13,14 @@ class InterestingPeople extends Component {
     authenticatedUser: PropTypes.shape({
       name: PropTypes.string,
     }),
+    authFetching: PropTypes.bool,
   };
 
   static defaultProps = {
     authenticatedUser: {
       name: '',
     },
+    authFetching: false,
   };
 
   state = {
@@ -28,10 +30,12 @@ class InterestingPeople extends Component {
   };
 
   componentWillMount() {
-    const authenticatedUsername = this.props.authenticatedUser.name;
-    const usernameValidator = window.location.pathname.match(/@(.*)/);
-    const username = usernameValidator ? usernameValidator[1] : authenticatedUsername;
-    this.getBlogAuthors(username);
+    if (!this.props.authFetching) {
+      const authenticatedUsername = this.props.authenticatedUser.name;
+      const usernameValidator = window.location.pathname.match(/@(.*)/);
+      const username = usernameValidator ? usernameValidator[1] : authenticatedUsername;
+      this.getBlogAuthors(username);
+    }
   }
 
   componentWillReceiveProps(nextProps) {
@@ -47,26 +51,35 @@ class InterestingPeople extends Component {
 
   getUsersAccountDetails = (usersQuery = []) =>
     steemAPI.getAccountsAsync(usersQuery).then((result) => {
-      const users = _.map(result, user => ({
-        ...user,
-        about: JSON.parse(user.json_metadata).profile.about,
-      }));
+      const users = _.map(result, (user) => {
+        try {
+          const about = JSON.parse(user.json_metadata).profile.about;
+          return {
+            ...user,
+            about,
+          };
+        } catch (e) {
+          return { ...user, about: '' };
+        }
+      });
       this.setState({
         users,
         loading: false,
+        noUsers: false,
       });
     });
 
-  getBlogAuthors = (username = '') => steemAPI.getBlogAuthorsAsync(username).then((result) => {
-    const users = _.sortBy(result, user => user[1]).reverse().slice(0, 3).map(user => user[0]);
-    if (users.length > 0) {
-      this.getUsersAccountDetails(users);
-    } else {
-      this.setState({
-        noUsers: true,
-      });
-    }
-  });
+  getBlogAuthors = (username = '') =>
+    steemAPI.getBlogAuthorsAsync(username).then((result) => {
+      const users = _.sortBy(result, user => user[1]).reverse().slice(0, 3).map(user => user[0]);
+      if (users.length > 0) {
+        this.getUsersAccountDetails(users);
+      } else {
+        this.setState({
+          noUsers: true,
+        });
+      }
+    });
 
   render() {
     const { users, loading, noUsers } = this.state;
