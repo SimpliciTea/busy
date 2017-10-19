@@ -72,7 +72,7 @@ class InterestingPeople extends Component {
   getBlogAuthors = (username = '') =>
     steemAPI.getBlogAuthorsAsync(username).then((result) => {
       const users = _.sortBy(result, user => user[1]).reverse().slice(0, 3).map(user => user[0]);
-      if (users.length > 0) {
+      if (users.length >= 3) {
         this.getUsersAccountDetails(users);
       } else {
         this.setState({
